@@ -9,7 +9,7 @@
 
 \section*{Module Setup}
 \begin{code}
-module Set (
+module BSet (
   Set, 
   add,
   remove,
@@ -35,7 +35,8 @@ import Data.Foldable
 
 \section*{Core}
 \begin{code}
-data Set a = EmptySet | Node a (Set a) (Set a)
+data Set a = EmptySet | Node a (Set a) (Set a) Colour
+data Colour = Black | Red
 
 
 instance Show a => Show (Set a) where
@@ -43,7 +44,7 @@ instance Show a => Show (Set a) where
 
 instance Foldable Set where
   foldr _ z EmptySet = z
-  foldr f z (Node k l r) = foldr f (f k (foldr f z r)) l
+  foldr f z (Node k l r _) = foldr f (f k (foldr f z r)) l
 
 instance Ord a => Eq (Set a) where
   EmptySet == EmptySet = True
@@ -67,8 +68,8 @@ remove a (Node b c d) | compare a b == LT = Node b (remove a c) d
                       | otherwise         = Node (getRightChild c) (remove (getRightChild c) c) d
 
 getRightChild :: Ord a => Set a -> a
-getRightChild (Node b _ EmptySet) = b
-getRightChild (Node _ _ d) = getRightChild d
+getRightChild (Node b _ EmptySet _) = b
+getRightChild (Node _ _ d _) = getRightChild d
 getRightChild EmptySet = error "Cannot get right child of an empty node"
 
 
@@ -82,20 +83,20 @@ empty = EmptySet
 
 
 singleton :: Ord a => a -> Set a
-singleton a = Node a (EmptySet) (EmptySet)
+singleton a = Node a (EmptySet) (EmptySet) Black
 
 
 member :: Ord a => a -> Set a -> Bool
 member _ (EmptySet) = False
-member a (Node b _ _) | compare a b == EQ = True
-member a (Node b c _) | compare a b == LT = member a c
-member a (Node b _ d) | compare a b == GT = member a d
+member a (Node b _ _ _) | compare a b == EQ = True
+member a (Node b c _ _) | compare a b == LT = member a c
+member a (Node b _ d _) | compare a b == GT = member a d
                       | otherwise = False
 
 
 size :: Set a -> Int
 size (EmptySet) = 0
-size (Node _ b c) = 1 + size b + size c
+size (Node _ b c _) = 1 + size b + size c
 
 
 isSubsetOf :: Ord a => Set a -> Set a -> Bool 
