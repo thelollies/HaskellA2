@@ -6,13 +6,13 @@
 \begin{document}
 \newminted[code]{haskell}{linenos}
 \maketitle
-
+ 
 \section*{Module Setup}
 \begin{code}
 module BSet (
   Set, 
   add,
-{-  remove,
+  remove,
   isEmpty,
   empty,
   singleton,
@@ -23,8 +23,8 @@ module BSet (
   intersection,
   difference,
   filter,
-  valid,
-  map-}) where
+  {-valid,-}
+  map) where
 
 import Prelude hiding(foldr, filter, map)
 import Data.Foldable
@@ -57,7 +57,7 @@ addHelper :: Ord a => a -> Set a -> Set a
 addHelper a EmptySet = Node a EmptySet EmptySet Red
 addHelper a (Node k l r c) | a < k = fix k (addHelper a l) r c
 addHelper a (Node k l r c) | a == k = Node k l r c
-addHelper a (Node k l r c) | a > k = fix k l (addHelper a r) c
+addHelper a (Node k l r c) | otherwise = fix k l (addHelper a r) c
 
 
 fix :: Ord a => a -> Set a -> Set a -> Colour -> Set a
@@ -69,21 +69,30 @@ fix e l r c = Node e l r c -- No fixing required
 
 
 toBlack :: Set a -> Set a
-toBlack (Node k l r c) = Node k l r Black
+toBlack (Node k l r _) = Node k l r Black
 toBlack EmptySet = EmptySet
 
 
-{-
 remove :: Ord a => a -> Set a -> Set a
-remove _ EmptySet = EmptySet
-remove a (Node b EmptySet EmptySet) | compare a b == EQ = EmptySet
-                                    | otherwise = singleton b
-remove a (Node b EmptySet d) | compare a b == EQ = d
-remove a (Node b c EmptySet) | compare a b == EQ = c
-remove a (Node b c d) | compare a b == LT = Node b (remove a c) d
-                      | compare a b == GT = Node b c (remove a d)
-                      | otherwise         = Node (getRightChild c) (remove (getRightChild c) c) d
+remove e s = toBlack(removeHelper e s)
 
+removeHelper :: Ord a => a -> Set a -> Set a
+removeHelper e EmptySet = EmptySet
+removeHelper e (Node k l r c) | e < k = fix k (removeHelper e l) r c
+removeHelper e (Node k l r c) | e == k = fix k (Node (getRightChild l) (removeHelper (getRightChild l) l) r c) r c
+removeHelper e (Node k l r c) | otherwise = fix k l (removeHelper e r) c
+
+
+{-remove :: Ord a => a -> Set a -> Set a
+remove _ EmptySet = EmptySet
+remove a n@(Node b EmptySet EmptySet _) | a == b = EmptySet
+                                        | otherwise = n
+remove a (Node b EmptySet d Red) | a == b = d
+remove a (Node b c EmptySet Red) | a == b = c
+remove a (Node b c d e) | a < b = Node b (remove a c) d e
+                      | a > b = Node b c (remove a d) e
+                      | otherwise         = Node (getRightChild c) (remove (getRightChild c) c) d e
+-}
 
 getRightChild :: Ord a => Set a -> a
 getRightChild (Node b _ EmptySet _) = b
@@ -102,7 +111,7 @@ empty = EmptySet
 
 singleton :: Ord a => a -> Set a
 singleton a = Node a (EmptySet) (EmptySet) Black
--}
+
 
 member :: Ord a => a -> Set a -> Bool
 member _ (EmptySet) = False
@@ -111,7 +120,7 @@ member a (Node b c _ _) | a < b = member a c
 member a (Node b _ d _) | a > b = member a d
                         | otherwise = False
 
-{-
+
 size :: Set a -> Int
 size (EmptySet) = 0
 size (Node _ b c _) = 1 + size b + size c
@@ -140,7 +149,7 @@ addIf :: Ord a => (a -> Bool) -> a -> Set a -> Set a
 addIf f a r | f a = add a r
                 | otherwise = r
 
-
+{-
 valid :: Ord a => Set a -> Bool
 valid EmptySet = True
 valid (Node _ EmptySet EmptySet) = True
@@ -148,9 +157,10 @@ valid (Node a (Node b c d) EmptySet) = compare a b == GT && valid (Node b c d)
 valid (Node a EmptySet (Node b c d)) = compare a b == LT && valid (Node b c d)
 valid (Node a (Node b c d) (Node e f g)) = compare a b == GT && compare a e == LT && 
                                              valid (Node b c d) && valid (Node e f g)
+-}
 
 map :: (Ord a, Ord b) => (a -> b) -> Set a -> Set b
-map f = foldr (\ e r -> add (f e) r) EmptySet-}
+map f = foldr (\ e r -> add (f e) r) EmptySet
 
 
 \end{code}

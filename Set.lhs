@@ -58,13 +58,14 @@ add a (Node b c d) | compare a b == EQ = Node b c d
 
 remove :: Ord a => a -> Set a -> Set a
 remove _ EmptySet = EmptySet
-remove a (Node b EmptySet EmptySet) | compare a b == EQ = EmptySet
-                                    | otherwise = singleton b
-remove a (Node b EmptySet d) | compare a b == EQ = d
-remove a (Node b c EmptySet) | compare a b == EQ = c
-remove a (Node b c d) | compare a b == LT = Node b (remove a c) d
-                      | compare a b == GT = Node b c (remove a d)
-                      | otherwise         = Node (getRightChild c) (remove (getRightChild c) c) d
+remove a n@(Node b EmptySet EmptySet _) | a == b = EmptySet
+                                      | otherwise = n
+remove a (Node b EmptySet d) | a == b = d
+remove a (Node b c EmptySet) | a == b = c
+remove a (Node b c d) | a < b = Node b (remove a c) d
+                      | a > b = Node b c (remove a d)
+                      | otherwise = Node (getRightChild c) (remove (getRightChild c) c) d
+
 
 getRightChild :: Ord a => Set a -> a
 getRightChild (Node b _ EmptySet) = b
