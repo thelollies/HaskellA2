@@ -12,7 +12,7 @@
 module BSet (
   Set, 
   add,
-  remove,
+{-  remove,
   isEmpty,
   empty,
   singleton,
@@ -24,7 +24,7 @@ module BSet (
   difference,
   filter,
   valid,
-  map) where
+  map-}) where
 
 import Prelude hiding(foldr, filter, map)
 import Data.Foldable
@@ -38,7 +38,6 @@ import Data.Foldable
 data Set a = EmptySet | Node a (Set a) (Set a) Colour
 data Colour = Black | Red
 
-
 instance Show a => Show (Set a) where
     show a = "{" ++ drop 2 (foldr (\e r -> ", " ++ show e ++ r) "" a) ++ "}"
 
@@ -46,15 +45,38 @@ instance Foldable Set where
   foldr _ z EmptySet = z
   foldr f z (Node k l r _ ) = foldr f (f k (foldr f z r)) l
 
-instance Ord a => Eq (Set a) where
+{-instance Ord a => Eq (Set a) where
   EmptySet == EmptySet = True
   a == b = (foldr (\e r -> r && (member e b)) True a) && (foldr (\e r -> r && (member e a)) True b)
+-}
 
 add :: Ord a => a -> Set a -> Set a
-add a EmptySet = Node a (EmptySet) (EmptySet) Black EmptySet
-add a (Node b c d e) | compare a b == EQ = Node b c d e
+add a (Node b EmptySet c d) | compare a b == LT = Node b (Node a EmptySet EmptySet Red) c d
+add a (Node b c EmptySet d) | compare a b == GT = Node b c (Node a EmptySet EmptySet Red) d
+add a root@(Node b _ _ _) | compare a b == EQ = root
+add a root@(Node k l r c) | compare a k == LT = Node k (addInner a root EmptySet l) r c
+add a root@(Node k l r c) | compare a k == GT = Node k l (addInner a root EmptySet r) c
+add a set = addInner a EmptySet EmptySet EmptySet 
+
+{- element -> parent -> grandparent -> node -> result -}
+addInner :: Ord a => a -> Set a -> Set a -> Set a -> Set a
+addInner k EmptySet EmptySet EmptySet = Node k EmptySet EmptySet Black -- Empty set
+addInner k _ _ node@(Node k1 _ _ _) | compare k k1 == EQ = node -- Duplicate, return the tree unchanged
+addInner k p _ node@(Node k1 l _ _) | compare k k1 == LT = addInner k node p l -- Recurse left
+addInner k p _ node@(Node k1 _ r _) | compare k k1 == GT = addInner k node p r -- Recurse right
+addInner k (Node pk pl pr Black) _ EmptySet | compare k pk == LT = 
+          Node pk (Node k EmptySet EmptySet Red) pr Black-- parent is black and element belongs to parent's left
+addInner k (Node pk pl pr Black) _ EmptySet | otherwise =
+          Node pk pl (Node k EmptySet EmptySet Red) Black-- parent is black and element belongs to parent's right
+
+
+-- Now need to deal with the case where I'm adding and the current node is emptyset
+
+
+{-add a (Node b c d e) | compare a b == EQ = Node b c d e
                    | compare a b == LT = Node b (add a c) d
                    | otherwise = Node b c (add a d)
+
 
 
 remove :: Ord a => a -> Set a -> Set a
@@ -132,7 +154,7 @@ valid (Node a (Node b c d) (Node e f g)) = compare a b == GT && compare a e == L
                                              valid (Node b c d) && valid (Node e f g)
 
 map :: (Ord a, Ord b) => (a -> b) -> Set a -> Set b
-map f = foldr (\ e r -> add (f e) r) EmptySet
+map f = foldr (\ e r -> add (f e) r) EmptySet-}
 
 
 \end{code}
