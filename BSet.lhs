@@ -45,40 +45,35 @@ instance Foldable Set where
   foldr _ z EmptySet = z
   foldr f z (Node k l r _ ) = foldr f (f k (foldr f z r)) l
 
-{-instance Ord a => Eq (Set a) where
+instance Ord a => Eq (Set a) where
   EmptySet == EmptySet = True
   a == b = (foldr (\e r -> r && (member e b)) True a) && (foldr (\e r -> r && (member e a)) True b)
--}
+
 
 add :: Ord a => a -> Set a -> Set a
-add a (Node b EmptySet c d) | compare a b == LT = Node b (Node a EmptySet EmptySet Red) c d
-add a (Node b c EmptySet d) | compare a b == GT = Node b c (Node a EmptySet EmptySet Red) d
-add a root@(Node b _ _ _) | compare a b == EQ = root
-add a root@(Node k l r c) | compare a k == LT = Node k (addInner a root EmptySet l) r c
-add a root@(Node k l r c) | compare a k == GT = Node k l (addInner a root EmptySet r) c
-add a set = addInner a EmptySet EmptySet EmptySet 
+add e s = toBlack (addHelper e s)
 
-{- element -> parent -> grandparent -> node -> result -}
-addInner :: Ord a => a -> Set a -> Set a -> Set a -> Set a
-addInner k EmptySet EmptySet EmptySet = Node k EmptySet EmptySet Black -- Empty set
-addInner k _ _ node@(Node k1 _ _ _) | compare k k1 == EQ = node -- Duplicate, return the tree unchanged
-addInner k p _ node@(Node k1 l _ _) | compare k k1 == LT = addInner k node p l -- Recurse left
-addInner k p _ node@(Node k1 _ r _) | compare k k1 == GT = addInner k node p r -- Recurse right
-addInner k (Node pk pl pr Black) _ EmptySet | compare k pk == LT = 
-          Node pk (Node k EmptySet EmptySet Red) pr Black-- parent is black and element belongs to parent's left
-addInner k (Node pk pl pr Black) _ EmptySet | otherwise =
-          Node pk pl (Node k EmptySet EmptySet Red) Black-- parent is black and element belongs to parent's right
+addHelper :: Ord a => a -> Set a -> Set a
+addHelper a EmptySet = Node a EmptySet EmptySet Red
+addHelper a (Node k l r c) | a < k = fix k (addHelper a l) r c
+addHelper a (Node k l r c) | a == k = Node k l r c
+addHelper a (Node k l r c) | a > k = fix k l (addHelper a r) c
 
 
--- Now need to deal with the case where I'm adding and the current node is emptyset
+fix :: Ord a => a -> Set a -> Set a -> Colour -> Set a
+fix e (Node e1 (Node e2 l2 r2 Red) r1 Red) r Black = Node e1 (Node e2 l2 r2 Black) (Node e r1 r Black) Red
+fix e (Node e2 l2 (Node e1 r2 r1 Red) Red) r Black = Node e1 (Node e2 l2 r2 Black) (Node e r1 r Black) Red
+fix e2 l2 (Node e (Node e1 r2 r1 Red) r Red) Black = Node e1 (Node e2 l2 r2 Black) (Node e r1 r Black) Red
+fix e2 l2 (Node e1 r2 (Node e r1 r Red) Red) Black = Node e1 (Node e2 l2 r2 Black) (Node e r1 r Black) Red
+fix e l r c = Node e l r c -- No fixing required
 
 
-{-add a (Node b c d e) | compare a b == EQ = Node b c d e
-                   | compare a b == LT = Node b (add a c) d
-                   | otherwise = Node b c (add a d)
+toBlack :: Set a -> Set a
+toBlack (Node k l r c) = Node k l r Black
+toBlack EmptySet = EmptySet
 
 
-
+{-
 remove :: Ord a => a -> Set a -> Set a
 remove _ EmptySet = EmptySet
 remove a (Node b EmptySet EmptySet) | compare a b == EQ = EmptySet
@@ -88,6 +83,7 @@ remove a (Node b c EmptySet) | compare a b == EQ = c
 remove a (Node b c d) | compare a b == LT = Node b (remove a c) d
                       | compare a b == GT = Node b c (remove a d)
                       | otherwise         = Node (getRightChild c) (remove (getRightChild c) c) d
+
 
 getRightChild :: Ord a => Set a -> a
 getRightChild (Node b _ EmptySet _) = b
@@ -106,16 +102,16 @@ empty = EmptySet
 
 singleton :: Ord a => a -> Set a
 singleton a = Node a (EmptySet) (EmptySet) Black
-
+-}
 
 member :: Ord a => a -> Set a -> Bool
 member _ (EmptySet) = False
-member a (Node b _ _ _) | compare a b == EQ = True
-member a (Node b c _ _) | compare a b == LT = member a c
-member a (Node b _ d _) | compare a b == GT = member a d
-                      | otherwise = False
+member a (Node b _ _ _) | a == b = True
+member a (Node b c _ _) | a < b = member a c
+member a (Node b _ d _) | a > b = member a d
+                        | otherwise = False
 
-
+{-
 size :: Set a -> Int
 size (EmptySet) = 0
 size (Node _ b c _) = 1 + size b + size c
