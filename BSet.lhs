@@ -44,15 +44,15 @@ instance Show a => Show (Set a) where
 
 instance Foldable Set where
   foldr _ z EmptySet = z
-  foldr f z (Node k l r _) = foldr f (f k (foldr f z r)) l
+  foldr f z (Node k l r _ ) = foldr f (f k (foldr f z r)) l
 
 instance Ord a => Eq (Set a) where
   EmptySet == EmptySet = True
   a == b = (foldr (\e r -> r && (member e b)) True a) && (foldr (\e r -> r && (member e a)) True b)
 
 add :: Ord a => a -> Set a -> Set a
-add a EmptySet = Node a (EmptySet) (EmptySet)
-add a (Node b c d) | compare a b == EQ = Node b c d
+add a EmptySet = Node a (EmptySet) (EmptySet) Black EmptySet
+add a (Node b c d e) | compare a b == EQ = Node b c d e
                    | compare a b == LT = Node b (add a c) d
                    | otherwise = Node b c (add a d)
 
@@ -122,6 +122,7 @@ addIf :: Ord a => (a -> Bool) -> a -> Set a -> Set a
 addIf f a r | f a = add a r
                 | otherwise = r
 
+
 valid :: Ord a => Set a -> Bool
 valid EmptySet = True
 valid (Node _ EmptySet EmptySet) = True
@@ -132,6 +133,7 @@ valid (Node a (Node b c d) (Node e f g)) = compare a b == GT && compare a e == L
 
 map :: (Ord a, Ord b) => (a -> b) -> Set a -> Set b
 map f = foldr (\ e r -> add (f e) r) EmptySet
+
 
 \end{code}
 \noindent \texttt

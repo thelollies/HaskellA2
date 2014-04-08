@@ -49,6 +49,32 @@ instance Ord a => Eq (Set a) where
   EmptySet == EmptySet = True
   a == b = (foldr (\e r -> r && (member e b)) True a) && (foldr (\e r -> r && (member e a)) True b)
 
+
+
+data (Ord a) => RedBlackTree a = RBTNode a Color (RedBlackTree a) (RedBlackTree a)
+                           | RBTEmpty deriving (Eq,Show)
+
+
+
+-- pivot left tree at root; second parent indicates whether or not to swap
+-- colors of the nodes that are being moved.
+pivotLeft :: (Ord a) => Set a -> Bool -> Set a
+pivotLeft @oldroot(Node a left (RBTNode a2 colour2 l2 lr) colour) swap = (Node a2 oldroot lr (ifswitch colour foccolor)) where
+             oldrootcolor = if swap then colour2 else colour
+             oldroot = RBTNode a oldrootcolor left l2
+
+
+pivotRight :: (Ord a) => Set a -> Bool -> Set a
+pivotRight (RBTNode rootval colour (RBTNode focval foccolor focleft focright) sib) swap =
+       (RBTNode focval (ifswitch colour foccolor) focleft oldroot) where
+             oldrootcolor = if swap then foccolor else colour
+             oldroot = RBTNode rootval oldrootcolor focright sib 
+
+
+ifswitch :: Bool -> a -> a -> a
+ifswitch True a _ = a
+ifswitch False _ b = b 
+
 add :: Ord a => a -> Set a -> Set a
 add a EmptySet = Node a (EmptySet) (EmptySet)
 add a (Node b c d) | compare a b == EQ = Node b c d
