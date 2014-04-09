@@ -58,7 +58,7 @@ add a (Node b c d) | compare a b == EQ = Node b c d
 
 remove :: Ord a => a -> Set a -> Set a
 remove _ EmptySet = EmptySet
-remove a n@(Node b EmptySet EmptySet _) | a == b = EmptySet
+remove a n@(Node b EmptySet EmptySet) | a == b = EmptySet
                                       | otherwise = n
 remove a (Node b EmptySet d) | a == b = d
 remove a (Node b c EmptySet) | a == b = c
@@ -125,10 +125,13 @@ addIf f a r | f a = add a r
 valid :: Ord a => Set a -> Bool
 valid EmptySet = True
 valid (Node _ EmptySet EmptySet) = True
-valid (Node a (Node b c d) EmptySet) = compare a b == GT && valid (Node b c d)
-valid (Node a EmptySet (Node b c d)) = compare a b == LT && valid (Node b c d)
-valid (Node a (Node b c d) (Node e f g)) = compare a b == GT && compare a e == LT && 
-                                             valid (Node b c d) && valid (Node e f g)
+valid (Node a (Node b c d) EmptySet) = a > b && valid (Node b c d) && (not (member a c || member a d))
+valid (Node a EmptySet (Node b c d)) = a < b && valid (Node b c d) && (not (member a c || member a d))
+valid (Node a l@(Node b c d) r@(Node e f g)) = a > b && a < e 
+                                            && valid (Node b c d) -- The left child is correctly arranged
+                                            && valid (Node e f g) -- The right child is correctly arranged
+                                            && not (member a l) -- Element is not contained in left side
+                                            && not (member a r) -- Element is not contained in right side
 
 map :: (Ord a, Ord b) => (a -> b) -> Set a -> Set b
 map f = foldr (\ e r -> add (f e) r) EmptySet
