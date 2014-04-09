@@ -70,6 +70,8 @@ fix e2 l2 (Node e (Node e1 r2 r1 R) r R) B =
 fix e2 l2 (Node e1 r2 (Node e r1 r R) R) B = 
   Node e1 (Node e2 l2 r2 B) (Node e r1 r B) R -- rchild to parent, rr child to B sibling (left rotate)
 fix e l r c = Node e l r c -- No consecutive Reds thus no fixing required
+-- TODO add the new cases which handle BB and NB
+
 
 fixSet :: Ord a => Set a -> Set a
 fixSet (Node e l r c) = fix e l r c
