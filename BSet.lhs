@@ -64,7 +64,7 @@ isBorBB (B) = True
 isBorBB (BB) = True
 isBorBB _ = False
 
-fix :: Ord a => a -> Set a -> Set a -> Colour -> Set a
+fix :: a -> Set a -> Set a -> Colour -> Set a
 fix e (Node e1 (Node e2 l2 r2 R) r1 R) r c | isBorBB c = 
   Node e1 (Node e2 l2 r2 B) (Node e r1 r B) (subtractB c) -- lchild to parent, llchild to B sibling (right rotate)
 fix e (Node e2 l2 (Node e1 r2 r1 R) R) r c | isBorBB c = 
@@ -98,7 +98,7 @@ removeHelper e (Node v l r c) | e > v = bubble v l (removeHelper e r) c -- keep 
 removeHelper _ s = s
 
 {- element of node -> node l -> node r -> node colour -> result set -}
-bubble :: Ord a => a -> Set a -> Set a -> Colour -> Set a
+bubble :: a -> Set a -> Set a -> Colour -> Set a
 bubble v l@(Node _ _ _ BB) r c = fix v (subtractBSet l) (subtractBSet r) (addB c)
 bubble v l r@(Node _ _ _ BB) c = fix v (subtractBSet l) (subtractBSet r) (addB c)
 bubble v l@(EmptySet BB) r c = fix v (subtractBSet l) (subtractBSet r) (addB c)
@@ -111,8 +111,13 @@ rmove (Node _ (EmptySet _) (EmptySet _) B) = EmptySet BB -- Delete B node with n
 rmove (Node _ lNode@(Node _ _ _ R) (EmptySet _) B) = toB lNode -- delete B node with one (R) child
 rmove (Node _ (EmptySet _) rNode@(Node _ _ _ R) B) = toB rNode -- delete B node with one (R) child
 rmove (Node _ lNode@(Node _ _ _ _) rNode@(Node _ _ _ _) c) = 
-      bubble (rChild lNode) (remove (rChild lNode) lNode) rNode c -- handle delete with two children
+      bubble (rChild lNode) (removeMax lNode) rNode c -- handle delete with two children
 rmove s = s
+
+removeMax :: Ord a => Set a -> Set a
+removeMax s@(Node e _ (EmptySet _) _)  = rmove s
+removeMax (Node e l r c) = bubble e l (removeMax r) c
+removeMax (EmptySet _) = error "Cannot call remove max on an element that doesn't exist"
 
 subtractBSet :: Set a -> Set a
 subtractBSet (EmptySet c) = EmptySet (subtractB c)
@@ -131,7 +136,7 @@ subtractB B = R
 subtractB R = NB
 subtractB NB = error "Cannot subtract black from negative black"
 
-rChild :: Ord a => Set a -> a
+rChild :: Set a -> a
 rChild (Node b _ (EmptySet _) _) = b
 rChild (Node _ _ d _) = rChild d
 rChild (EmptySet _) = error "Cannot get right child of an empty node"
@@ -240,9 +245,21 @@ bHeightEqual (Node _ l r R) = ((fst lResult) , (snd lResult) && (snd rResult))
                                 rResult = bHeightEqual r 
 bHeightEqual _ = (0, False) -- NB or BB node, shouldnt be there so no height defined for it
 
+
+
 map :: (Ord a, Ord b) => (a -> b) -> Set a -> Set b
 map f = foldr (\ e r -> add (f e) r) (EmptySet B)
 
+printTree :: Show a => Set a -> String -> String
+printTree (Node e l r c) s = "\n" ++ s ++ (col c) ++ (show e) ++ (printTree l (s ++ "-")) ++ (printTree r (s ++ "-"))
+printTree (EmptySet colour) s = "\n" ++ s ++ col colour
+            
+
+col :: Colour -> String
+col B = "B"
+col R = "R"
+col BB = "BB"
+col NB = "NB"
 
 \end{code}
 \noindent \texttt
