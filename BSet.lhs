@@ -225,17 +225,6 @@ wellOrdNoDup (Node a l@(Node b _ _ _) r@(Node e _ _ _) _) = a > b && a < e
                                             && not (member a r) -- Element is not contained in right side
 
 
-printTree :: Show a => Set a -> String -> String
-printTree (Node e l r c) s = "\n" ++ s ++ (col c) ++ (show e) ++ (printTree l (s ++ "-")) ++ (printTree r (s ++ "-"))
-printTree (EmptySet colour) s = "\n" ++ s ++ col colour
-            
-
-col :: Colour -> String
-col B = "B"
-col R = "R"
-col BB = "BB"
-col NB = "NB"
-
 bHeightEqual :: Set a -> (Int, Bool)
 bHeightEqual (EmptySet B) = (1, True)
 bHeightEqual (EmptySet BB) = error "shouldnt be getting double blacks in settled tree"
