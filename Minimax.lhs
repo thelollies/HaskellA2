@@ -54,8 +54,9 @@ main = do
 play :: MTree -> IO ()
 play (Node brd _ []) = putStrLn (showBoard brd ++ "\n\n" ++ "It's a draw!")
 play (Node brd X subtree) = putStrLn (showBoard brd) >> chooseMove brd subtree >>= play
-play (Node brd O subtree) = play (last (mySort subtree))
+play (Node _ O subtree) = play (last (mySort subtree))
 play (Win brd a) = putStrLn (showBoard brd ++ "\n\nPlayer " ++ show a ++ " wins!\n")
+play (Node _ E _) = error "Cannot play tic tac toe as an empty tile"
 
 chooseMove :: Board -> [MTree] -> IO MTree
 chooseMove brd options = do 
