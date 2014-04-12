@@ -9,70 +9,171 @@
 
 \section*{Module Setup}
 \begin{code}
-module Minimax(wins, 
-  emptyBoard, 
-  showBoard, 
-  Player(X,O),
-  boardNextMoves,
-  next) where
 
+data SQ = X | O | E
+type Player = SQ
+type Board = [SQ]
 data MTree = Node Board Player [MTree] | Win Board Player
-instance Ord MTree where
-  (Win _ _) `compare` (Win _ _) = EQ
-  (Win _ _) `compare` (Node _ _ _) = GT
-  (Node _ _ _) `compare` (Win _ _) = LT
-  (Node b1 p1 _) `compare` (Node b2 p2 _) = ((heuristicValue p1 b1 - heuristicValue (next p1) b1)) `compare`
-                                            ((heuristicValue p2 b2 - heuristicValue (next p2) b2))
+
 instance Eq MTree where
   (Win _ _) == (Win _ _) = True
-  (Win _ _) == (Node _ _ _) = False 
+  (Win _ _) == (Node _ _ _) = False
   (Node _ _ _) == (Win _ _) = False
-  (Node b1 p1 _) == (Node b2 p2 _) = ((heuristicValue p1 b1 - heuristicValue (next p1) b1)) ==
-                                            ((heuristicValue p2 b2 - heuristicValue (next p2) b2))
+  l@(Node _ _ _) == r@(Node _ _ _) = minimax 3 l == minimax 3 r
 
-data Player = X | O
-type Square = Either Int Player
-type Board = [Square]
 
-instance Show Player where
+instance Ord MTree where
+  (Win _ _) `compare` (Win _ _) = EQ
+  (Win _ _) `compare` (Node _ _ _)        = GT
+  (Node _ _ _) `compare` (Win _ _)        = LT
+  l@(Node _ _ _) `compare` r@(Node _ _ _) = minimax 3 l `compare` minimax 3 r
+
+instance Show MTree where
+  show (Node b _ _) = showBoard b
+  show (Win b _) = showBoard b
+
+instance Show SQ where
   show X = "X"
   show O = "O"
+  show E = " "
 
-instance Eq Player where
+instance Eq SQ where
   X == X = True
   O == O = True
+  E == E = True
   _ == _ = False
 
-size :: MTree -> Int
-size (Win _ _) = 1
-size (Node _ _ a) = 1 + foldr (\e r -> r + size e) 0 a
+main :: IO()
+main = do
+          putStrLn "Welcome to Tic Tac Toe, you get first turn.\n"
+          putStrLn "Make your selection by entering 1-9 where those numbers "
+          putStrLn "match an empty slot on the board. The board is numbered "
+          putStrLn "left to right, top to bottom.\n\n"
+          play (gameSubTree X emptyBoard)
 
-gameSubTree :: Player -> Player -> Board -> MTree
-gameSubTree player comp board | (next player) `wins` board = Win board otherP
-                                                             where otherP = next player
-gameSubTree player comp board = Node board player (mySort (foldr (\ e r -> (gameSubTree (next player) comp e) : r) [] (boardNextMoves player board)))
+play :: MTree -> IO ()
+play (Node brd _ []) = putStrLn (showBoard brd ++ "\n\n" ++ "It's a draw!")
+play (Node brd X subtree) = putStrLn (showBoard brd) >> chooseMove brd subtree >>= play
+play (Node brd O subtree) = play (last (mySort subtree))
+play (Win brd a) = putStrLn (showBoard brd ++ "\n\nPlayer " ++ show a ++ " wins!\n")
 
-heuristicValue :: Player -> Board -> Int
-heuristicValue p (a:b:c:d:e:f:g:h:i:_) = canWin p a b c + -- top row
-                                         canWin p d e f + -- middle row
-                                         canWin p g h i + -- bottom row
-                                         canWin p a d g + -- left col
-                                         canWin p b e h + -- middle col
-                                         canWin p c f i + -- right col
-                                         canWin p a e i + -- diag from top left
-                                         canWin p g e c   -- diag from bottom right
-heuristicValue _ _ = error "Incorrect board dimensions"
+chooseMove :: Board -> [MTree] -> IO MTree
+chooseMove brd options = do 
+                          n <- getLine
+                          if (fst (setSq (read n - 1 :: Int) X brd) == E) then
+                            return $ findMove (snd (setSq (read n - 1 :: Int) X brd)) options
+                          else
+                            putStrLn (showBoard brd) >> chooseMove brd options                        
 
-canWin :: Player -> Square -> Square -> Square -> Int
-canWin p a b c = intOf $ pOrE p a && pOrE p b && pOrE p c
-                 where intOf True = 1
-                       intOf False = 0
+findMove :: Board -> [MTree] -> MTree
+findMove brd tree = head $ foldr (\ n@(Node b _ _) r -> select (eqBrd b brd) n r) [] tree
+                where select True e r = e:r
+                      select False _ r = r
 
-pOrE :: Player -> Square -> Bool
-pOrE p (Left _) = True
-pOrE p (Right r) | p == r = True
-pOrE _ _ = False
+eqBrd :: Board -> Board -> Bool
+eqBrd (b:rd) (b2:rd2) = b == b2 && eqBrd rd rd2
+eqBrd [] [] = True
+eqBrd _ _ = False
 
+
+comp :: Player
+comp = O
+
+emptyBoard :: Board
+emptyBoard = [E,E,E,E,E,E,E,E,E]
+
+{- Decomposes a board into it's winnable rows/columns/diagonals -}
+threes :: Board -> [(SQ, SQ, SQ)]
+threes (a:b:c:d:e:f:g:h:i:_) = [(a, b, c), (d, e, f), (g, h, i), -- rows
+                                (a, d, g), (b, e, h), (c, f, i), -- columns
+                                (a, e, i), (g, e, c)]            -- diagonals
+threes _ = error "Board must be 3x3"
+
+showBoard :: Board -> String
+showBoard (a:b:c:d:e:f:g:h:i:_) =  show a ++ sep ++ show b ++ sep ++ show c ++ rowSep ++
+                                   show d ++ sep ++ show e ++ sep ++ show f ++ rowSep ++
+                                   show g ++ sep ++ show h ++ sep ++ show i ++ "\n"
+                                   where rowSep = "\n---------\n"
+                                         sep = " | "
+showBoard _ = "Invalid Board dimensions, 3x3 required"
+
+gameSubTree :: Player -> Board -> MTree
+gameSubTree player board | gameOver board = Win board (next player) -- The game was won by the player who just went
+gameSubTree player board = Node board player $ foldr (\ e r -> (gameSubTree (next player) e) : r) [] (boardNextMoves player board)
+
+{- Returns the score for the board in the given tree node by searching to
+   the specified depth and applying the evaluation function on the successive
+   moves -}
+minimax :: Int -> MTree -> Int
+minimax n (Node board _ children) | n == 0 || length children == 0 = evaluate  board
+minimax _ (Win board _) = evaluate board
+minimax n (Node _ p children) = foldr ((maxOrMin p) . (minimax (n-1))) (startVal p) children -- possible sub moves
+                                   where maxOrMin p1 | p1 == comp = max 
+                                                     | otherwise = min
+                                         startVal p1 | p1 == comp = (-999999999 :: Int)
+                                                     | otherwise = (999999999 :: Int)
+
+{- Determines whether a player has won the game -}
+gameOver :: Board -> Bool
+gameOver board = foldr (\ (a, b, c) r -> r || (a == b && a == c && a /= E)) False $ threes board
+
+{- Calculates the value of the board from the computer's perspective -}
+evaluate :: Board -> Int
+evaluate board = foldr ((+) . evaluateLine) 0 (threes board)
+
+{- Takes three squares and calculates the scoreof the specified line 
+   relative to the computer. It awards 100, 10, 1 for 3, 2, 1 in a line
+   respectively and negates the value for the human player -}
+evaluateLine :: (SQ, SQ, SQ) -> Int
+evaluateLine (s1, s2, s3) = tileThr s3 $ tileTwo s2 $ tileOne s1
+                          where tileOne s    | s == comp = 1
+                                             | s == next comp = -1
+                                             | otherwise = 0
+                                tileTwo s n  | s == comp && n == 1 = 10
+                                             | s == next comp && n == 1 = 0
+                                tileTwo s n  | s == comp && n == -1 = 0
+                                             | s == next comp && n == -1 = -10
+                                tileTwo s n  | s == comp && n == 0 = 1
+                                             | s == next comp && n == 0 = -1
+                                tileTwo _ n = n
+                                tileThr s n  | s == comp && n > 0 = n * 10
+                                             | s == comp && n < 0 = 0
+                                             | s == comp && n == 0 = 1
+                                             | s == next comp && n < 0 = n * 10 
+                                             | s == next comp && n > 1 = 0
+                                             | s == next comp = -1
+                                             | otherwise = n
+
+{- Generates the possible moves by the specified player from the specified square.
+   Returns the moves as boards with the move placed on them. The Int pertaining
+   to the square to start at is used by the recursion rather than the  -}
+boardNextMoves :: Player -> Board -> [Board]
+boardNextMoves p brd = foldr (\(n, b) r -> add n p b r) [] $ [0..8] `zip` (replicate 9 brd)
+
+add :: Int -> Player -> Board -> [Board] -> [Board]
+add n p brd brds | sq == E = ((newBoard):brds)
+                 where (sq, newBoard) = setSq n p brd
+add _ _ _ brds = brds
+
+{- Sets the specified square and returns a tuple (old sq, new board) -}
+setSq :: Int -> Player -> Board -> (SQ, Board)
+setSq 0 p (b:bs) = (b, p:bs)
+setSq n p (b:bs) = (square, b:board)
+                 where (square, board) = (setSq (n-1) p bs)
+setSq _ _ [] = (E, [])
+
+next :: Player -> Player
+next X = O
+next O = X
+next E = E
+
+
+\end{code}
+
+\noindent \texttt{mySort} accepts a list of elements which are a subtype of \texttt{Ord} and returns
+that list in ascending order. It uses recursive mergesort to achieve the sorting.
+
+\begin{code}
 mySort :: Ord a => [a] -> [a]
 mySort [] = []
 mySort [a] = [a]
@@ -85,62 +186,6 @@ merge [] y = y
 merge x [] = x
 merge (x:xrest) (y:yrest) | x <= y = x: merge xrest (y:yrest)
 merge (x:xrest) (y:yrest) | otherwise = y: merge (x:xrest) yrest
-
-
-
-emptyBoard :: Board
-emptyBoard = [Left 1, Left 2, Left 3, Left 4, Left 5, Left 6, Left 7, Left 8, Left 9]
-
-showSq :: Square -> String
-showSq (Left a) = show a
-showSq (Right b) = show b
-
-showBoard :: Board -> String
-showBoard (a:b:c:d:e:f:g:h:i:_) =  showSq a ++ sep ++ showSq b ++ sep ++ showSq c ++ rowSep ++
-                                   showSq d ++ sep ++ showSq e ++ sep ++ showSq f ++ rowSep ++
-                                   showSq g ++ sep ++ showSq h ++ sep ++ showSq i
-                                   where rowSep = "\n---------\n"
-                                         sep = " | "
-showBoard _ = "Invalid Board dimensions, 3x3 required"
-
-{- Shifts the turn to the next player -}
-next :: Player -> Player
-next X = O
-next O = X
-
-wins :: Player -> Board -> Bool
-wins m (a:b:c:d:e:f:g:h:i:_) = (same m a b c) || -- top row win
-                               (same m d e f) || -- middle row win
-                               (same m g h i) || -- bottom row win
-                               (same m a d g) || -- left col win
-                               (same m b e h) || -- middle col win
-                               (same m c f i) || -- right col win
-                               (same m a e i) || -- diagonal from top left win
-                               (same m g e c)    -- diagonal from bottom left win
-wins _ _ = False
-
-same :: Player -> Square -> Square -> Square -> Bool
-same m (Right m1) (Right m2) (Right m3) = m == m1 && m == m2 && m == m3
-same _ _ _ _ = False
-
-boardNextMoves :: Player -> Board -> [Board]
-boardNextMoves m b = foldr (\ n r -> add m (b !! (n-1)) b r) [] [1..9]
-
-add :: Player -> Square -> Board -> [Board] -> [Board]
-add m (Left n) b r = (setSq n m b):r
-add _ (Right _) _ r = r
-
-setSq :: Int -> Player -> Board -> Board
-setSq 1 m (_:bs) = (Right m):bs
-setSq n m (b:bs) = b:(setSq (n-1) m bs)
-setSq _ _ [] = []
-
-{-
-Player one is the player's 
-1. Populate the tree with every possible Player at a level and assign a +/- value indicating if you win or lose on it
-2. Recurse on this pattern, alternating players' moves
-3. 
--} 
 
 \end{code}
 \noindent \texttt
