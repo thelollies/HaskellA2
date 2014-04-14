@@ -282,7 +282,8 @@ The remaining functions in this module are all helper functions used internally.
 removeMax :: Ord a => Set a -> Set a
 removeMax s@(Node _ _ (EmptySet _) _)  = rmove s
 removeMax (Node e l r c) = bubble e l (removeMax r) c
-removeMax (EmptySet _) = error "Cannot call remove max on an element that doesn't exist"
+removeMax (EmptySet _) = 
+  error "Cannot call remove max on an element that doesn't exist"
 
 isBorBB :: Colour -> Bool
 isBorBB (B) = True
